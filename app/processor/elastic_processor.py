@@ -5,13 +5,13 @@ from dateutil import parser
 from elasticsearch import Elasticsearch
 from elasticsearch.helpers import bulk
 
-from app.loader import DataLoader
-from app.processor import TextAnalyzer
+from loader import DataLoader
+from processor.text_analyzer import TextAnalyzer
 
 
 class ElasticSearchProcessor:
     def __init__(self):
-        self.es = Elasticsearch('http://localhost:9200')
+        self.es = Elasticsearch('http://elastic:9200')
         self._set_mapping()
         self._text_analyzer = TextAnalyzer()
 

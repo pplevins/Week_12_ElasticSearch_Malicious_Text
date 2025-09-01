@@ -1,7 +1,7 @@
 from fastapi import APIRouter, FastAPI
 from contextlib import asynccontextmanager
 
-from app.processor import ElasticSearchProcessor
+from processor import ElasticSearchProcessor
 
 elastic_processor = ElasticSearchProcessor()
 DATA_PROCESSED = False

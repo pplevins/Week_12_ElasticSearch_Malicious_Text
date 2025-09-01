@@ -3,7 +3,7 @@ import os
 import nltk
 from nltk.sentiment import SentimentIntensityAnalyzer
 
-from app.loader import DataLoader
+from loader import DataLoader
 from .text_cleaner import TextCleaner
 
 
