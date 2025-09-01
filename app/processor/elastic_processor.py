@@ -175,12 +175,35 @@ class ElasticSearchProcessor:
         self._update_sentiment()
         self._search_weapons()
         self._delete_unnecessary_documents()
+        self.get_with_two_weapons()
 
     def get_antisemitic_with_weapons(self):
-        pass
+        query = {
+            "query": {
+                "bool": {
+                    "must": [
+                        {"term": {"Antisemitic": True}},
+                        {"exists": {"field": "weapons"}}
+                    ]
+                }
+            },
+            "size": 10000
+        }
+        res = self.es.search(index="tweets", body=query)
+        return [hit["_source"] for hit in res["hits"]["hits"]]
 
     def get_with_two_weapons(self):
-        pass
+        query = {
+            "query": {
+                "script": {
+                    "script": "doc['weapons'].size() >= 2"
+                }
+            },
+            "size": 10000
+        }
+        res = self.es.search(index="tweets", body=query)
+        return [hit["_source"] for hit in res["hits"]["hits"]]
 
 
-ElasticSearchProcessor().process()
+if __name__ == '__main__':
+    ElasticSearchProcessor().process()
