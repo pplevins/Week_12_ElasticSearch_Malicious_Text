@@ -18,7 +18,7 @@ class ElasticSearchProcessor:
                 },
                 "CreateDate": {
                     "type": "date",
-                    "format": "yyyy-MM-dd HH:mm:ssXXX"
+                    "format": "yyyy-MM-dd'T'HH:mm:ssXXX"
                 },
                 "Antisemitic": {
                     "type": "boolean"
@@ -35,7 +35,10 @@ class ElasticSearchProcessor:
             }
         }
         self.es.indices.delete(index='tweets', ignore_unavailable=True)
-        self.es.indices.create(index='tweets', ignore=400, body=mappings)
+        self.es.options(ignore_status=[400]).indices.create(
+            index="tweets",
+            mappings=mappings
+        )
 
     def _generate_documents(self, tweets):
         for i, doc_data in enumerate(tweets):
@@ -43,8 +46,8 @@ class ElasticSearchProcessor:
                 "_index": "tweets",
                 "_id": i + 1,
                 "_source": {
-                    'TweetID': doc_data['TweetID'],
-                    'CreateDate': parser.parse(doc_data['CreateDate']),
+                    'TweetID': int(doc_data['TweetID']),
+                    'CreateDate': parser.parse(doc_data['CreateDate']).isoformat(),
                     'Antisemitic': bool(doc_data['Antisemitic']),
                     'text': doc_data['text']
                 }
@@ -72,3 +75,6 @@ class ElasticSearchProcessor:
 
     def get_with_two_weapons(self):
         pass
+
+
+ElasticSearchProcessor().process()
