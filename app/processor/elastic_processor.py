@@ -1,14 +1,18 @@
+from time import sleep
+
 from dateutil import parser
 from elasticsearch import Elasticsearch
 from elasticsearch.helpers import bulk
 
 from app.loader import DataLoader
+from app.processor import TextAnalyzer
 
 
 class ElasticSearchProcessor:
     def __init__(self):
         self.es = Elasticsearch('http://localhost:9200')
         self._set_mapping()
+        self._text_analyzer = TextAnalyzer()
 
     def _set_mapping(self):
         mappings = {
@@ -57,9 +61,44 @@ class ElasticSearchProcessor:
         tweets = DataLoader.load_from_csv()
         success, failed = bulk(self.es, self._generate_documents(tweets))
         print(f"Successfully indexed {success} documents, failed to index {len(failed)} documents.")
+        sleep(5)
 
     def _update_sentiment(self):
-        pass
+        scroll = self.es.search(
+            index="tweets",
+            scroll="2m",
+            body={
+                "_source": ["text"],  # only fetch Tweet field to save bandwidth
+                "query": {"match_all": {}},
+                "size": 1000,  # batch size
+            }
+        )
+
+        scroll_id = scroll["_scroll_id"]
+        hits = scroll["hits"]["hits"]
+
+        while hits:
+            actions = []
+            for hit in hits:
+                doc_id = hit["_id"]
+                tweet_text = hit["_source"].get("text", "")
+                sentiment = self._text_analyzer.calculate_text_sentiment(tweet_text)
+
+                actions.append({
+                    "_op_type": "update",
+                    "_index": "tweets",
+                    "_id": doc_id,
+                    "doc": {"Sentiment": sentiment}
+                })
+
+            if actions:
+                success = bulk(self.es, actions)
+                print(f"Updated {success} docs")
+
+            # Get next batch
+            scroll = self.es.scroll(scroll_id=scroll_id, scroll="2m")
+            scroll_id = scroll["_scroll_id"]
+            hits = scroll["hits"]["hits"]
 
     def _search_weapons(self):
         pass
@@ -69,6 +108,7 @@ class ElasticSearchProcessor:
 
     def process(self):
         self._load_to_es()
+        self._update_sentiment()
 
     def get_antisemitic_with_weapons(self):
         pass
