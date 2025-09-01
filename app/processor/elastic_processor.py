@@ -1,3 +1,4 @@
+from dateutil import parser
 from elasticsearch import Elasticsearch
 from elasticsearch.helpers import bulk
 
@@ -16,7 +17,8 @@ class ElasticSearchProcessor:
                     "type": "long"
                 },
                 "CreateDate": {
-                    "type": "date"
+                    "type": "date",
+                    "format": "yyyy-MM-dd HH:mm:ssXXX"
                 },
                 "Antisemitic": {
                     "type": "boolean"
@@ -40,7 +42,12 @@ class ElasticSearchProcessor:
             yield {
                 "_index": "tweets",
                 "_id": i + 1,
-                "_source": doc_data
+                "_source": {
+                    'TweetID': doc_data['TweetID'],
+                    'CreateDate': parser.parse(doc_data['CreateDate']),
+                    'Antisemitic': bool(doc_data['Antisemitic']),
+                    'text': doc_data['text']
+                }
             }
 
     def _load_to_es(self):
