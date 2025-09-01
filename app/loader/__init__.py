@@ -1,1 +1,1 @@
-from .weapons_fetcher import WeaponsFetcher
+from .data_loader import DataLoader
