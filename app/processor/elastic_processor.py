@@ -175,7 +175,6 @@ class ElasticSearchProcessor:
         self._update_sentiment()
         self._search_weapons()
         self._delete_unnecessary_documents()
-        self.get_with_two_weapons()
 
     def get_antisemitic_with_weapons(self):
         query = {
