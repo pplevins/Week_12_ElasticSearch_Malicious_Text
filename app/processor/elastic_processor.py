@@ -1,3 +1,4 @@
+import re
 from time import sleep
 
 from dateutil import parser
@@ -70,7 +71,7 @@ class ElasticSearchProcessor:
             body={
                 "_source": ["text"],  # only fetch Tweet field to save bandwidth
                 "query": {"match_all": {}},
-                "size": 1000,  # batch size
+                "size": 10000,  # batch size
             }
         )
 
@@ -99,9 +100,57 @@ class ElasticSearchProcessor:
             scroll = self.es.scroll(scroll_id=scroll_id, scroll="2m")
             scroll_id = scroll["_scroll_id"]
             hits = scroll["hits"]["hits"]
+        # sleep(5)
 
     def _search_weapons(self):
-        pass
+        weapons_list = DataLoader.fetch_weapons_list()
+        query = {
+            "query": {
+                "bool": {
+                    "should": [
+                        {"match_phrase": {"text": f" {weapon.lower().strip()}"}} for weapon in
+                        weapons_list
+                    ]
+                }
+            },
+            "size": 10000,
+            "highlight": {
+                "fields": {
+                    "text": {}
+                }
+            }
+        }
+
+        scroll = self.es.search(index="tweets", body=query, scroll="2m")
+        scroll_id = scroll["_scroll_id"]
+        hits = scroll["hits"]["hits"]
+        print(f"Found {len(hits)} weapons")
+
+        while hits:
+            actions = []
+            for hit in hits:
+                doc_id = hit["_id"]
+                text = hit["_source"]["text"]
+                highlight = hit["highlight"]["text"]
+                found_weapons = []
+                for high in highlight:
+                    found_weapons += re.findall(r'<em>(.*?)</em>', high)
+                if found_weapons:
+                    actions.append({
+                        "_op_type": "update",
+                        "_index": "tweets",
+                        "_id": doc_id,
+                        "doc": {"weapons": found_weapons}
+                    })
+
+            if actions:
+                success, failed = bulk(self.es, actions)
+                print(f"Updated weapons field in {success} docs, failed to index {len(failed)} documents.")
+
+            # Get next batch
+            scroll = self.es.scroll(scroll_id=scroll_id, scroll="2m")
+            scroll_id = scroll["_scroll_id"]
+            hits = scroll["hits"]["hits"]
 
     def _delete_unnecessary_documents(self):
         pass
@@ -109,6 +158,7 @@ class ElasticSearchProcessor:
     def process(self):
         self._load_to_es()
         self._update_sentiment()
+        self._search_weapons()
 
     def get_antisemitic_with_weapons(self):
         pass
