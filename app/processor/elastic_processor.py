@@ -89,7 +89,7 @@ class ElasticSearchProcessor:
                     "_op_type": "update",
                     "_index": "tweets",
                     "_id": doc_id,
-                    "doc": {"Sentiment": sentiment}
+                    "doc": {"sentiment": sentiment}
                 })
 
             if actions:
@@ -130,7 +130,6 @@ class ElasticSearchProcessor:
             actions = []
             for hit in hits:
                 doc_id = hit["_id"]
-                text = hit["_source"]["text"]
                 highlight = hit["highlight"]["text"]
                 found_weapons = []
                 for high in highlight:
@@ -151,14 +150,31 @@ class ElasticSearchProcessor:
             scroll = self.es.scroll(scroll_id=scroll_id, scroll="2m")
             scroll_id = scroll["_scroll_id"]
             hits = scroll["hits"]["hits"]
+        sleep(5)
 
     def _delete_unnecessary_documents(self):
-        pass
+        response = self.es.delete_by_query(
+            index="tweets",
+            body={
+                "query": {
+                    "bool": {
+                        "must": [
+                            {"term": {"Antisemitic": False}},
+                            {"terms": {"sentiment": ["neutral", "positive"]}},
+                            {"bool": {"must_not": {"exists": {"field": "weapons"}}}}
+                        ]
+                    }
+                }
+            }
+        )
+
+        print(f'deleted {response['deleted']} documents')
 
     def process(self):
         self._load_to_es()
         self._update_sentiment()
         self._search_weapons()
+        self._delete_unnecessary_documents()
 
     def get_antisemitic_with_weapons(self):
         pass
