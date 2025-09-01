@@ -3,7 +3,7 @@ import os
 import nltk
 from nltk.sentiment import SentimentIntensityAnalyzer
 
-from app.loader import WeaponsFetcher
+from app.loader import DataLoader
 from .text_cleaner import TextCleaner
 
 
@@ -14,7 +14,7 @@ class TextAnalyzer:
         nltk.data.path.append(nltk_dir)
         nltk.download('vader_lexicon', download_dir=nltk_dir, quiet=True)  # Compute sentiment labels
         self.sentiment_analyzer = SentimentIntensityAnalyzer()
-        self.weapons_list = WeaponsFetcher.fetch_weapons_list()
+        self.weapons_list = DataLoader.fetch_weapons_list()
         self.text_cleaner = TextCleaner()
 
     def calculate_text_sentiment(self, tweet_text: str) -> str:
